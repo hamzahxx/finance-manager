@@ -24,6 +24,7 @@ public:
     }
 };
 
+// Adding of Transactions
 int addTransaction(vector<Transaction>& trns) {
     int input;
     double amount;
@@ -67,7 +68,9 @@ int addTransaction(vector<Transaction>& trns) {
 
 int displayTransactions(const vector<Transaction>& trns) {
     if (trns.empty()) {
-        cout << "Transcation list is empty!\n";
+        cout << "\n--------------------------\n"
+<< "Transcation list is empty!"
+             << "\n--------------------------\n";
         return 1;
     }
     double totalIncome = 0.0, totalExpense = 0.0;
