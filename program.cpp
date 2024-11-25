@@ -70,19 +70,27 @@ int displayTransactions(const vector<Transaction>& trns) {
         cout << "Transcation list is empty!\n";
         return 1;
     }
-    for (int i = 0; i < trns.size(); i++) {
-        cout << "\nTransaction no: " << i+1 << endl;
+    double totalIncome = 0.0, totalExpense = 0.0;
+    for (size_t i = 0; i < trns.size(); i++) {
+        cout << "\nTransaction no: " << i + 1 << endl;
         trns[i].displayTransaction();
         cout << "---------------------\n";
+        if (trns[i].type == "Income") {
+            totalIncome += trns[i].amount;
+        } else if (trns[i].type == "Expense") {
+            totalExpense += trns[i].amount;
+        }
     }
+    cout << "\n---- Summary ----" << endl
+         << "Total Income: ₹" << totalIncome << endl
+         << "Total Expense: ₹" << totalExpense << endl
+         << "Net Balance: ₹" << (totalIncome - totalExpense) << endl;
     return 0;
 }
 
 int main() {
     bool exit = false;
     vector<Transaction> trns;
-    // trns.emplace_back("Income", "Salary", 5000);
-    // trns[0].displayTransaction();
     while (!exit) {
         int option;
         cout << "\n-------MENU-------\n"
