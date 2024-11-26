@@ -1,6 +1,8 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <fstream>
+#include <sstream>
 
 using namespace std;
 
@@ -36,7 +38,7 @@ int displayTransactions(const vector<Transaction>& trns) {
     for (size_t i = 0; i < trns.size(); i++) {
         cout << "\nTransaction no: " << i + 1 << endl;
         trns[i].displayTransaction();
-        cout << "---------------------\n";
+        cout << "------------------\n";
         if (trns[i].type == "Income") {
             totalIncome += trns[i].amount;
         } else if (trns[i].type == "Expense") {
@@ -50,8 +52,54 @@ int displayTransactions(const vector<Transaction>& trns) {
     return 0;
 }
 
+
+// Load Transactions
+int loadTransactions(vector<Transaction> &trns, const string& filename) {
+    ifstream inFile(filename);
+
+    if (!inFile.is_open()) {
+        cout << "Error: Unable to open file for loading transactions.\n";
+        return 1;
+    }
+    trns.clear();
+
+    string line;
+    while (getline(inFile, line)) {
+        istringstream iss(line);
+        string type, category;
+        double amount;
+
+        if (getline(iss, type, ',') && getline(iss, category, ',') && iss >> amount) {
+            if ((type == "Income" || type == "Expense") && !category.empty() && amount > 0) {
+                trns.emplace_back(type, category, amount);
+            } else {
+                cout << "Warning: Skipped invalid transaction in file: " << line << "\n";
+            }
+        } else {
+            cout << "Warning: Skipped malformed line in file: " << line << "\n";
+        }
+    }
+    cout << "\nTransactions loaded successfully from " << filename << ".\n";
+    return 0;
+}
+
+// Save Transactions
+int saveTransactions(const vector<Transaction> trns, const string& filename) {
+    ofstream outFile(filename);
+    if (outFile.is_open()) {
+        for (size_t i = 0; i < trns.size(); ++i) {
+            const Transaction& txn = trns[i];
+            outFile << txn.type << "," << txn.category << "," << txn.amount << "\n";
+        }
+        outFile.close();
+        return 0;
+    } else {
+        return 1;
+    }
+}
+
 // Adding of Transactions
-int addTransaction(vector<Transaction>& trns) {
+int addTransaction(vector<Transaction>& trns, const string filename) {
     int input;
     double amount;
     string category;
@@ -101,13 +149,19 @@ int addTransaction(vector<Transaction>& trns) {
         return 1;
     }
 
+    // Save Check
+    if (saveTransactions(trns, filename) != 0) {
+        cout << "Transaction added, but saving failed.\n";
+        return 1;
+    }
+
     // transaction added successfully
-    cout << "\nTransaction added successfully!" << endl;
+    cout << "\nTransaction added and saved successfully!" << endl;
     return 0;
 }
 
 // Removal of Transactions
-int removeTransaction(vector<Transaction>& trns) {
+int removeTransaction(vector<Transaction>& trns, const string filename) {
     // transaction list validation
     if (trns.empty()) {
         cout << "\n--------------------------\n"
@@ -142,7 +196,14 @@ int removeTransaction(vector<Transaction>& trns) {
     }
     transactionId -= 1;
     trns.erase(trns.begin() + transactionId);
-    cout << "\nTransaction removed successfully." << endl;
+
+    // Save Check
+    if (saveTransactions(trns, filename) != 0) {
+        cout << "Transaction removed, but saving failed.\n";
+        return 1;
+    }
+    
+    cout << "\nTransaction removed and changes saved successfully!" << endl;
     return 0;
 }
 
@@ -151,6 +212,10 @@ int removeTransaction(vector<Transaction>& trns) {
 int main() {
     bool exit = false;
     vector<Transaction> trns;
+    string filename = "transactions.csv";
+
+    loadTransactions(trns, filename);
+
     while (!exit) {
         int option;
         cout << "\n-------MENU-------\n"
@@ -161,19 +226,20 @@ int main() {
         cin >> option;
         switch (option) {
         case 1:
-            addTransaction(trns);
+            addTransaction(trns, filename);
             break;
         case 2:
-            removeTransaction(trns);
+            removeTransaction(trns, filename);
             break;
         case 3:
             displayTransactions(trns);
             break;
         case 4:
             exit = true;
+            saveTransactions(trns, filename);
             break;
         default:
-            cout << "Invalid Option\n";
+            cout << "\nInvalid Option\n";
             break;
         }
     }
