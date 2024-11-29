@@ -6,6 +6,14 @@
 
 using namespace std;
 
+#if defined(_WIN32) || defined(_WIN64)
+#include <conio.h>
+#define clearScreen() system("cls")
+#else
+#include <ncurses.h>
+#define clearScreen() system("clear")
+#endif
+
 class Transaction {
  public:
   string type;      // Income or Expense
@@ -25,6 +33,14 @@ class Transaction {
          << "Amount: " << amount << endl;
   }
 };
+
+void displayMenu() {
+  cout << "\n-------MENU-------\n"
+       << "1. Add a Transaction\n"
+       << "2. Delete a Transaction\n"
+       << "3. View all Transactions\n"
+       << "4. Exit\n\n";
+}
 
 // Display of Transactions
 int displayTransactions(const vector<Transaction> &trns) {
@@ -49,7 +65,12 @@ int displayTransactions(const vector<Transaction> &trns) {
   cout << "\n---- Summary ----" << endl
        << "Total Income: ₹" << totalIncome << endl
        << "Total Expense: ₹" << totalExpense << endl
-       << "Net Balance: ₹" << (totalIncome - totalExpense) << endl;
+       << "Net Balance: ₹" << (totalIncome - totalExpense) << endl
+       << endl;
+
+  cout << "Press ENTER/RETURN key to\nreturn to the main menu\n\n";
+  cin.ignore();
+  cin.get();
   return 0;
 }
 
@@ -115,6 +136,9 @@ int addTransaction(vector<Transaction> &trns, const string filename) {
     if (cin.fail() || input > 2) {
       cout << "Error: Please choose a valid transaction type (1 for Income, 2 "
               "for Expense): ";
+      cin.clear();  // Clear error flag
+      cin.ignore(numeric_limits<streamsize>::max(), '\n');
+
     } else {
       // Valid Input
       break;
@@ -175,7 +199,7 @@ int removeTransaction(vector<Transaction> &trns, const string filename) {
   displayTransactions(trns);
   cout << "\nEnter the id of the transaction to be removed: ";
   while (true) {
-    cin >> transactionId; // Attempt to read input
+    cin >> transactionId;  // Attempt to read input
 
     if (cin.fail()) {
       // Handle non-numeric input
@@ -220,14 +244,11 @@ int main() {
   loadTransactions(trns, filename);
 
   while (!exit) {
-    int option;
-    cout << "\n-------MENU-------\n"
-         << "1. Add a Transaction\n"
-         << "2. Delete a Transaction\n"
-         << "3. View all Transactions\n"
-         << "4. Exit\n\n";
+    clearScreen();
+    displayMenu();
 
     // Main menu input validation
+    int option;
     while (true) {
       cin >> option;
       if (cin.fail()) {
@@ -246,17 +267,25 @@ int main() {
 
     switch (option) {
       case 1:
+        clearScreen();
+        cout << "Adding Transaction\n";
         addTransaction(trns, filename);
         break;
       case 2:
+        clearScreen();
+        cout << "Removing Transaction\n";
         removeTransaction(trns, filename);
         break;
       case 3:
+        clearScreen();
+        cout << "Displaying Transactions\n";
         displayTransactions(trns);
         break;
       case 4:
+        clearScreen();
         exit = true;
         saveTransactions(trns, filename);
+        cout << "Program Ended\n\n";
         break;
     }
   }
