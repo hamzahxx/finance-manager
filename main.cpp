@@ -142,11 +142,11 @@ void drawDashboard(WINDOW* win, vector<Transaction>& trns) {
 }
 
 // Load Transactions
-int loadTransactions(vector<Transaction>& trns, const string filename) {
+int loadTransactions(vector<Transaction>& trns, const string& filename) {
   ifstream inFile(filename);
 
   if (!inFile.is_open()) {
-    cout << "Error: Unable to open file for loading transactions.\n";
+    printw("Error: Unable to open file for loading transactions.\n");
     return 1;
   }
   trns.clear();
@@ -163,19 +163,23 @@ int loadTransactions(vector<Transaction>& trns, const string filename) {
           amount > 0) {
         trns.emplace_back(type, category, amount);
       } else {
-        cout << "Warning: Skipped invalid transaction in file: " << line
-             << "\n";
+        printw("Warning: Skipped invalid transaction in file: %s\n",
+               line.c_str());
       }
     } else {
-      cout << "Warning: Skipped malformed line in file: " << line << "\n";
+      printw("Warning: Skipped malformed line in file: %s\n", line.c_str());
     }
   }
-  cout << "\nTransactions loaded successfully from " << filename << ".\n";
+  printw("\nTransactions loaded successfully from %s.\n", filename.c_str());
+  printw("\nPress any key to continue.");
+  getch();
+
+  clear();
   return 0;
 }
 
 // Save Transactions
-int saveTransactions(const vector<Transaction> trns, const string filename) {
+int saveTransactions(const vector<Transaction>& trns, const string& filename) {
   ofstream outFile(filename);
   if (outFile.is_open()) {
     for (size_t i = 0; i < trns.size(); ++i) {
@@ -185,6 +189,9 @@ int saveTransactions(const vector<Transaction> trns, const string filename) {
     outFile.close();
     return 0;
   } else {
+    printw("Transactions Saving was Unsuccessful.\n");
+    printw("\nPress any key to continue.");
+    getch();
     return 1;
   }
 }
@@ -353,9 +360,9 @@ int main() {
         break;
       case 10:
         if (menu_options[choice] == "Add Transaction") {
-            
+        
         } else if (menu_options[choice] == "Remove Transaction") {
-
+        
         } else if (menu_options[choice] == "View Transactions") {
           viewTransactionsList(trns, menu);
         } else if (menu_options[choice] == "Exit") {
