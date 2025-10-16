@@ -197,66 +197,145 @@ int saveTransactions(const vector<Transaction>& trns, const string& filename) {
 }
 
 // Adding of Transactions
-int addTransaction(vector<Transaction>& trns, const string filename) {
-  int input;
-  double amount;
+int addTransaction(vector<Transaction>& trns, const string filename, WINDOW* menu) {
+  int choice = 0;
+  string type;
   string category;
-  // Input for transaction type
-  cout << "Transaction Type:\n"
-       << "   1. Income\n"
-       << "   2. Expense\n";
-  while (true) {
-    cin >> input;
-    if (cin.fail() || input > 2) {
-      cout << "Error: Please choose a valid transaction type (1 for Income, 2 "
-              "for Expense): ";
-      cin.clear();  // Clear error flag
-      cin.ignore(numeric_limits<streamsize>::max(), '\n');
+  double amount;
+  bool done = false;
 
-    } else {
-      // Valid Input
-      break;
+  vector<string> menu_options = {"Add Income", "Add Expense",
+                                 "Back to Main Menu"};
+
+  while (!done) {
+    wclear(menu);
+
+    box(menu, 1, 0);
+
+    // Draw menu for transaction type
+    mvwprintw(menu, 1, 2, "Select transaction type");
+    for (int i = 0; i < menu_options.size(); ++i) {
+      if (i == choice) wattron(menu, A_REVERSE);
+      mvwprintw(menu, 3 + i, 3, menu_options[i].c_str());
+      if (i == choice) wattroff(menu, A_REVERSE);
     }
-  }
 
-  // String input for category
-  cout << "\nType the category of Transaction: ";
-  cin >> category;
+    wrefresh(menu);
 
-  // Double int input for amount
-  cout << "\nEnter the amount: ";
-  while (true) {
-    cin >> amount;
-    if (cin.fail()) {
-      // Handle non-numeric input
-      cout << "Invalid input. Please enter a valid numeric amount: ";
-      cin.clear();  // Clear error flag
-      cin.ignore(numeric_limits<streamsize>::max(),
-                 '\n');  // Discard invalid input
-    } else if (amount <= 0) {
-      // Handle non-positive values
-      cout << "Invalid input. Amount must be greater than 0. Try again: ";
-    } else {
-      // Valid input
-      break;
+    // Navigating the menu
+    int key = getch();
+    switch (key) {
+      case KEY_UP:
+        if (choice > 0) choice--;
+        break;
+      case KEY_DOWN:
+        if (choice < menu_options.size() - 1) choice++;
+        break;
+      case 10:  // Enter key
+        if (choice == 2) {
+          done = true;
+          wclear(menu);
+          wmove(menu, 1, 2);
+          wprintw(menu, "Transaction was cancelled!");
+          wrefresh(menu);
+          getch();
+
+          noecho();
+          curs_set(0);
+          return 1;
+        } else {
+          if (choice == 0)
+            type = "Income";
+          else
+            type = "Expense";
+
+          echo();
+          curs_set(1);
+
+          wclear(menu);
+          box(menu, 1, 0);
+          wmove(menu, 1, 2);
+          wprintw(menu, "Transaction details:");
+          wmove(menu, 3, 3);
+          wprintw(menu, "Type: %s", type.c_str());
+
+          bool valid_category = false;
+          while (!valid_category) {
+            char cat_buf[100];
+            wmove(menu, 4, 3);
+            wprintw(menu, "Category: ");
+            wrefresh(menu);
+            wgetstr(menu, cat_buf);
+            category = string(cat_buf);
+
+            if (category.empty()) {
+              wmove(menu, 6, 3);
+              wprintw(menu, "Error: Category cannot be empty!");
+              wrefresh(menu);
+              wmove(menu, 4, 2);
+              wclrtoeol(menu);
+            } else {
+              valid_category = true;
+              wmove(menu, 6, 3);
+              wclrtoeol(menu);
+              wrefresh(menu);
+            }
+          }
+
+          bool valid_amount = false;
+          while (!valid_amount) {
+            char amount_buf[100];
+            wmove(menu, 5, 3);
+            wprintw(menu, "Amount: ");
+            wrefresh(menu);
+            wclrtoeol(menu);
+            wgetstr(menu, amount_buf);
+
+            try {
+              amount = stod(amount_buf);
+              if (amount <= 0) {
+                wmove(menu, 7, 2);
+                wprintw(menu, "Error: Amount must be above 0!");
+                wrefresh(menu);
+              } else {
+                valid_amount = true;
+                wmove(menu, 7, 1);
+                wclrtoeol(menu);
+                wrefresh(menu);
+              }
+            } catch (const invalid_argument& e) {
+              wmove(menu, 7, 4);
+              wprintw(menu, "Error: Enter a valid number!");
+              wrefresh(menu);
+            }
+          }
+
+          trns.emplace_back(type, category, amount);
+          done = true;
+        }
+        break;
     }
-  }
-
-  // Transaction Type with Validation of Type
-  if (input == 1) {
-    trns.emplace_back("Income", category, amount);
-  } else if (input == 2) {
-    trns.emplace_back("Expense", category, amount);
   }
 
   // Save Check
   if (saveTransactions(trns, filename) != 0) {
-    cout << "Transaction added, but saving failed.\n";
+    wclear(menu);
+    wmove(menu, 1, 1);
+    wprintw(menu, "Transaction added, but saving failed.");
+    refresh();
+    getch();
     return 1;
   }
 
   // transaction added successfully
-  cout << "\nTransaction added and saved successfully!" << endl;
+  wclear(menu);
+  wmove(menu, 1, 1);
+  wprintw(menu, "Transaction added!");
+  wrefresh(menu);
+  getch();
+
+  noecho();
+  curs_set(0);
   return 0;
 }
 
@@ -360,7 +439,7 @@ int main() {
         break;
       case 10:
         if (menu_options[choice] == "Add Transaction") {
-        
+          addTransaction(trns, filename, menu);
         } else if (menu_options[choice] == "Remove Transaction") {
         
         } else if (menu_options[choice] == "View Transactions") {
