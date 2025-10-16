@@ -340,49 +340,96 @@ int addTransaction(vector<Transaction>& trns, const string filename, WINDOW* men
 }
 
 // Removal of Transactions
-int removeTransaction(vector<Transaction>& trns, const string filename) {
-  // transaction list validation
+int removeTransaction(vector<Transaction>& trns, const string filename, WINDOW* menu) {
   if (trns.empty()) {
-    cout << "\n--------------------------\n"
-         << "Transaction list is empty!"
-         << "\n--------------------------\n";
+    wclear(menu);
+    box(menu, 1, 0);
+    wmove(menu, 2, 2);
+    wprintw(menu, "There are no transactions!");
+    wmove(menu, 4, 2);
+    wprintw(menu, "Press any key to continue.");
+    wrefresh(menu);
+    getch();
+
     return 1;
   }
-  int transactionId;
-  cout << "\nEnter the id of the transaction to be removed: ";
-  while (true) {
-    cin >> transactionId;  // Attempt to read input
 
-    if (cin.fail()) {
-      // Handle non-numeric input
-      cout << "Invalid input. Please enter a valid transaction ID: ";
-      cin.clear();                                          // Clear error flag
-      cin.ignore(numeric_limits<streamsize>::max(), '\n');  // Discard bad input
-    } else if (transactionId <= 0 || transactionId > trns.size()) {
-      // Handle out-of-bounds ID
-      cout << "Transaction ID must be between 1 and " << trns.size()
-           << ". Try again: ";
-    } else {
-      // Valid transaction ID
-      break;
+  int choice = 0, offset = 0, max_display = 4;
+  bool done = false;
+
+  while (!done) {
+    wclear(menu);
+
+    box(menu, 1, 0);
+
+    // Draw menu for transaction type
+    mvwprintw(menu, 1, 2, "Select transaction (UP/DOWN keys)");
+
+    if (offset > 0) {
+      wmove(menu, 2, 13);
+      wprintw(menu, "More above");
+    }
+
+    if (offset + max_display < trns.size()) {
+      wmove(menu, max_display + 3, 13);
+      wprintw(menu, "More below");
+    }
+
+    int display_count = min((int)trns.size() - offset, max_display);
+    for (int i = 0; i < display_count; ++i) {
+      int idx = i + offset;
+      if (idx == choice) wattron(menu, A_REVERSE);
+      mvwprintw(menu, 3 + i, 3, "%s, %s, %.2f", trns[idx].type.c_str(),
+                trns[idx].category.c_str(), trns[idx].amount);
+      if (idx == choice) wattroff(menu, A_REVERSE);
+    }
+
+    wrefresh(menu);
+
+    int c = getch();
+    switch (c) {
+      case KEY_UP:
+        if (choice > 0) {
+          choice--;
+          if (choice < offset) offset = choice;
+        }
+        break;
+      case KEY_DOWN:
+        if (choice < trns.size() - 1) {
+          choice++;
+          if (choice >= offset + max_display) offset = choice - max_display + 1;
+        }
+        break;
+
+      case 10:
+        trns.erase(trns.begin() + choice);
+
+        if (saveTransactions(trns, filename) == 0) {
+          wclear(menu);
+          box(menu, 1, 0);
+          wmove(menu, 2, 2);
+          wprintw(menu, "Transaction removed!");
+          wrefresh(menu);
+          getch();
+        }
+        done = true;
+        break;
+
+      case 'q':
+      case 'Q':
+        wclear(menu);
+        box(menu, 1, 0);
+        wmove(menu, 3, 11);
+        wprintw(menu, "Removal");
+        wmove(menu, 4, 10);
+        wprintw(menu, "Cancelled!");
+        wrefresh(menu);
+        getch();
+
+        done = true;
+        break;
     }
   }
-
-  // transaction id validation
-  if (transactionId > trns.size() || transactionId <= 0) {
-    cout << "Error: Invalid transaction ID. Please try again." << endl;
-    return 1;
-  }
-  transactionId -= 1;
-  trns.erase(trns.begin() + transactionId);
-
-  // Save Check
-  if (saveTransactions(trns, filename) != 0) {
-    cout << "Transaction removed, but saving failed.\n";
-    return 1;
-  }
-
-  cout << "\nTransaction removed and changes saved successfully!" << endl;
   return 0;
 }
 
@@ -441,7 +488,7 @@ int main() {
         if (menu_options[choice] == "Add Transaction") {
           addTransaction(trns, filename, menu);
         } else if (menu_options[choice] == "Remove Transaction") {
-        
+          removeTransaction(trns, filename, menu);
         } else if (menu_options[choice] == "View Transactions") {
           viewTransactionsList(trns, menu);
         } else if (menu_options[choice] == "Exit") {
