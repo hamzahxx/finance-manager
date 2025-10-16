@@ -1,3 +1,5 @@
+#include <ncurses.h>
+
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -6,14 +8,6 @@
 
 using namespace std;
 
-#if defined(_WIN32) || defined(_WIN64)
-#include <conio.h>
-#define clearScreen() system("cls")
-#else
-#include <ncurses.h>
-#define clearScreen() system("clear")
-#endif
-
 class Transaction {
  public:
   string type;      // Income or Expense
@@ -21,18 +15,111 @@ class Transaction {
   double amount;    // Amount of transaction
 
   // Constructor
-  Transaction(const string &type, const string &category, double amount) {
+  Transaction(const string& type, const string& category, double amount) {
     this->type = type;
     this->category = category;
     this->amount = amount;
   }
-
-  void displayTransaction() const {
-    cout << "Type: " << type << endl
-         << "Category: " << category << endl
-         << "Amount: " << amount << endl;
-  }
 };
+
+// Display Transactions
+
+int viewTransactionsList(vector<Transaction>& trns, WINDOW* menu) {
+  if (trns.empty()) {
+    wclear(menu);
+    box(menu, 1, 0);
+    mvwprintw(menu, 2, 2, "No transactions to display!");
+    wrefresh(menu);
+    getch();
+    return 1;
+  }
+
+  int scroll = 0;
+  int filterMode = 0;  // 0 = All, 1 = Income, 2 = Expense
+  int maxDisplay = 4;
+  bool done = false;
+
+  while (!done) {
+    wclear(menu);
+    box(menu, 1, 0);
+
+    // Header with instructions
+    mvwprintw(menu, 1, 2, "TRANSACTIONS LIST (Q to menu)");
+    mvwprintw(menu, 2, 2, "Filter: %s (F to change)",
+              filterMode == 0   ? "All"
+              : filterMode == 1 ? "Income"
+                                : "Expense");
+
+    // Filter transactions
+    vector<Transaction> filtered;
+    for (const auto& t : trns) {
+      if (filterMode == 0 || (filterMode == 1 && t.type == "Income") ||
+          (filterMode == 2 && t.type == "Expense")) {
+        filtered.push_back(t);
+      }
+    }
+
+    if (filtered.empty()) {
+      mvwprintw(menu, 4, 2, "No matching transactions");
+    } else {
+      int startIdx = min(scroll, (int)filtered.size() - 1);
+      int endIdx = min(startIdx + maxDisplay, (int)filtered.size());
+
+      for (int i = startIdx; i < endIdx; i++) {
+        int row = 4 + (i - startIdx);
+        const auto& t = filtered[i];
+
+        // Use color for income/expense if terminal supports it
+        if (has_colors()) {
+          if (t.type == "Income")
+            wattron(menu, COLOR_PAIR(1));
+          else
+            wattron(menu, COLOR_PAIR(2));
+        }
+
+        mvwprintw(menu, row, 2, "%s: $%.2f (%s)", t.category.c_str(), t.amount,
+                  t.type.c_str());
+
+        if (has_colors()) {
+          if (t.type == "Income")
+            wattroff(menu, COLOR_PAIR(1));
+          else
+            wattroff(menu, COLOR_PAIR(2));
+        }
+      }
+
+      // Scroll indicators
+      if (startIdx > 0) {
+        mvwprintw(menu, 3, 25, "More above");
+      }
+      if (endIdx < filtered.size()) {
+        mvwprintw(menu, 4 + maxDisplay, 25, "More below");
+      }
+    }
+    wrefresh(menu);
+
+    int key = getch();
+    switch (key) {
+      case 'f':
+      case 'F':
+        filterMode = (filterMode + 1) % 3;
+        scroll = 0;
+        break;
+      case KEY_UP:
+        if (scroll > 0) scroll--;
+        break;
+      case KEY_DOWN:
+        if (scroll + maxDisplay < (int)filtered.size()) scroll++;
+        break;
+      case 'q':
+      case 'Q':
+        done = true;
+        break;
+    }
+  }
+  return 0;
+}
+
 
 void displayMenu() {
   cout << "\n-------MENU-------\n"
@@ -40,38 +127,6 @@ void displayMenu() {
        << "2. Delete a Transaction\n"
        << "3. View all Transactions\n"
        << "4. Exit\n\n";
-}
-
-// Display of Transactions
-int displayTransactions(const vector<Transaction> &trns) {
-  // In case of Empty list
-  if (trns.empty()) {
-    cout << "\n--------------------------\n"
-         << "Transaction list is empty!"
-         << "\n--------------------------\n";
-    return 1;
-  }
-  double totalIncome = 0.0, totalExpense = 0.0;
-  for (size_t i = 0; i < trns.size(); i++) {
-    cout << "\nTransaction no: " << i + 1 << endl;
-    trns[i].displayTransaction();
-    cout << "------------------\n";
-    if (trns[i].type == "Income") {
-      totalIncome += trns[i].amount;
-    } else if (trns[i].type == "Expense") {
-      totalExpense += trns[i].amount;
-    }
-  }
-  cout << "\n---- Summary ----" << endl
-       << "Total Income: ₹" << totalIncome << endl
-       << "Total Expense: ₹" << totalExpense << endl
-       << "Net Balance: ₹" << (totalIncome - totalExpense) << endl
-       << endl;
-
-  cout << "Press ENTER/RETURN key to\nreturn to the main menu\n\n";
-  cin.ignore();
-  cin.get();
-  return 0;
 }
 
 // Load Transactions
@@ -196,7 +251,6 @@ int removeTransaction(vector<Transaction> &trns, const string filename) {
     return 1;
   }
   int transactionId;
-  displayTransactions(trns);
   cout << "\nEnter the id of the transaction to be removed: ";
   while (true) {
     cin >> transactionId;  // Attempt to read input
@@ -244,7 +298,7 @@ int main() {
   loadTransactions(trns, filename);
 
   while (!exit) {
-    clearScreen();
+    
     displayMenu();
 
     // Main menu input validation
@@ -267,22 +321,21 @@ int main() {
 
     switch (option) {
       case 1:
-        clearScreen();
+        
         cout << "Adding Transaction\n";
         addTransaction(trns, filename);
         break;
       case 2:
-        clearScreen();
+        
         cout << "Removing Transaction\n";
         removeTransaction(trns, filename);
         break;
       case 3:
-        clearScreen();
+        
         cout << "Displaying Transactions\n";
-        displayTransactions(trns);
         break;
       case 4:
-        clearScreen();
+        
         exit = true;
         saveTransactions(trns, filename);
         cout << "Program Ended\n\n";
