@@ -120,17 +120,29 @@ int viewTransactionsList(vector<Transaction>& trns, WINDOW* menu) {
   return 0;
 }
 
+// Draw Dashboard
+void drawDashboard(WINDOW* win, vector<Transaction>& trns) {
+  wclear(win);
+  box(win, 0, 0);
+  wrefresh(win);
 
-void displayMenu() {
-  cout << "\n-------MENU-------\n"
-       << "1. Add a Transaction\n"
-       << "2. Delete a Transaction\n"
-       << "3. View all Transactions\n"
-       << "4. Exit\n\n";
+  double totalIncome = 0, totalExpense = 0;
+  for (auto& t : trns) {
+    if (t.type == "Income")
+      totalIncome += t.amount;
+    else
+      totalExpense += t.amount;
+  }
+
+  mvwprintw(win, 1, 2, "=== PERSONAL FINANCE MANAGER ===");
+  mvwprintw(win, 3, 5, "Total Income: %.2f", totalIncome);
+  mvwprintw(win, 4, 5, "Total Expense: %.2f", totalExpense);
+  mvwprintw(win, 5, 5, "Net Balance: %.2f", totalIncome - totalExpense);
+  wrefresh(win);
 }
 
 // Load Transactions
-int loadTransactions(vector<Transaction> &trns, const string filename) {
+int loadTransactions(vector<Transaction>& trns, const string filename) {
   ifstream inFile(filename);
 
   if (!inFile.is_open()) {
@@ -167,7 +179,7 @@ int saveTransactions(const vector<Transaction> trns, const string filename) {
   ofstream outFile(filename);
   if (outFile.is_open()) {
     for (size_t i = 0; i < trns.size(); ++i) {
-      const Transaction &txn = trns[i];
+      const Transaction& txn = trns[i];
       outFile << txn.type << "," << txn.category << "," << txn.amount << "\n";
     }
     outFile.close();
@@ -178,7 +190,7 @@ int saveTransactions(const vector<Transaction> trns, const string filename) {
 }
 
 // Adding of Transactions
-int addTransaction(vector<Transaction> &trns, const string filename) {
+int addTransaction(vector<Transaction>& trns, const string filename) {
   int input;
   double amount;
   string category;
@@ -242,7 +254,7 @@ int addTransaction(vector<Transaction> &trns, const string filename) {
 }
 
 // Removal of Transactions
-int removeTransaction(vector<Transaction> &trns, const string filename) {
+int removeTransaction(vector<Transaction>& trns, const string filename) {
   // transaction list validation
   if (trns.empty()) {
     cout << "\n--------------------------\n"
@@ -291,56 +303,74 @@ int removeTransaction(vector<Transaction> &trns, const string filename) {
 // Main Function
 
 int main() {
-  bool exit = false;
+  initscr();
+  noecho();
+  cbreak();
+  curs_set(0);
+  keypad(stdscr, TRUE);
+
+  WINDOW* dashboard = newwin(8, 36, 2, 1);
+  WINDOW* menu = newwin(9, 36, 10, 1);
+  refresh();
+
   vector<Transaction> trns;
   string filename = "transactions.csv";
 
   loadTransactions(trns, filename);
 
-  while (!exit) {
-    
-    displayMenu();
+  refresh();
 
-    // Main menu input validation
-    int option;
-    while (true) {
-      cin >> option;
-      if (cin.fail()) {
-        // Invalid Input
-        cin.clear();
-        cin.ignore(numeric_limits<streamsize>::max(), '\n');
-        cout << "\nError: Invalid input, Please try again: ";
-      } else if (option > 4) {
-        // Input above 4
-        cout << "\nError: Please enter a valid option (1 to 4): ";
-      } else {
-        // Valid input
-        break;
-      }
+  drawDashboard(dashboard, trns);
+
+  int choice = 0;
+  vector<string> menu_options = {"Add Transaction", "Remove Transaction",
+                                 "View Transactions", "Exit"};
+
+  while (true) {
+    drawDashboard(dashboard, trns);
+
+    wclear(menu);
+    box(menu, 1, 0);
+    wmove(menu, 1, 7);
+    wprintw(menu, "=== MAIN MENU ===");
+
+    // Draw menu
+    for (int i = 0; i < menu_options.size(); ++i) {
+      if (i == choice) wattron(menu, A_REVERSE);
+      mvwprintw(menu, i + 3, 2, menu_options[i].c_str());
+      if (i == choice) wattroff(menu, A_REVERSE);
     }
 
-    switch (option) {
-      case 1:
-        
-        cout << "Adding Transaction\n";
-        addTransaction(trns, filename);
+    wrefresh(menu);
+
+    int c = getch();
+    switch (c) {
+      case KEY_UP:
+        if (choice > 0) choice--;
         break;
-      case 2:
-        
-        cout << "Removing Transaction\n";
-        removeTransaction(trns, filename);
+      case KEY_DOWN:
+        if (choice < menu_options.size() - 1) choice++;
         break;
-      case 3:
-        
-        cout << "Displaying Transactions\n";
-        break;
-      case 4:
-        
-        exit = true;
-        saveTransactions(trns, filename);
-        cout << "Program Ended\n\n";
+      case 10:
+        if (menu_options[choice] == "Add Transaction") {
+            
+        } else if (menu_options[choice] == "Remove Transaction") {
+
+        } else if (menu_options[choice] == "View Transactions") {
+          viewTransactionsList(trns, menu);
+        } else if (menu_options[choice] == "Exit") {
+          clear();
+          saveTransactions(trns, filename);
+          wclear(dashboard);
+          wclear(menu);
+          wrefresh(dashboard);
+          wrefresh(menu);
+          delwin(dashboard);
+          delwin(menu);
+          endwin();
+          return 0;
+        };  // Exit
         break;
     }
   }
-  return 0;
 }
