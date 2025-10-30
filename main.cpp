@@ -55,7 +55,7 @@ int viewTransactionsList(vector<Transaction>& trns, WINDOW* menu) {
     for (const auto& t : trns) {
       if (filterMode == 0 || (filterMode == 1 && t.type == "Income") ||
           (filterMode == 2 && t.type == "Expense")) {
-        filtered.push_back(t);
+        filtered.emplace_back(t);
       }
     }
 
